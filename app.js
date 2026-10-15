@@ -116,6 +116,46 @@
     return segments.map((segment) => (segment.revised.trim() || segment.original.trim())).filter(Boolean).join("\n\n");
   }
 
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, (character) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;",
+    })[character]);
+  }
+
+  function reportHtml() {
+    const rows = segments.map((segment, index) => `
+      <tr>
+        <td class="number">${String(index + 1).padStart(2, "0")}</td>
+        <td>${escapeHtml(segment.original || "—")}</td>
+        <td>${escapeHtml(segment.comments || "—")}</td>
+        <td>${escapeHtml(segment.revised.trim() || segment.original || "—")}</td>
+      </tr>`).join("");
+    const today = new Date().toLocaleDateString("pt-BR");
+    return `<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Relatório de revisão — Revisor</title>
+<style>
+@page{size:landscape;margin:16mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#20231f;margin:32px auto;max-width:1200px;padding:0 18px}header{border-bottom:3px solid #344f43;padding-bottom:18px;margin-bottom:24px}header p{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#68736a;margin:0 0 9px}h1{font-size:28px;margin:0 0 7px}header small{color:#73776e}table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:12px}th{background:#344f43;color:#fff;text-align:left;padding:10px;border:1px solid #344f43}td{vertical-align:top;padding:11px;border:1px solid #d8d9d1;white-space:pre-wrap;line-height:1.55;overflow-wrap:anywhere}tbody tr:nth-child(even){background:#f6f6f1}.number{width:38px;color:#81877e;font-family:monospace}th:first-child{width:44px}footer{margin-top:22px;color:#83877f;font-size:10px}@media screen{body{background:#f5f4ef}table{background:#fff}}
+</style></head><body><header><p>Revisor · relatório de revisão</p><h1>Correções da copy</h1><small>${today} · ${segments.length} ${segments.length === 1 ? "segmento" : "segmentos"}</small></header>
+<table><thead><tr><th>#</th><th>Original</th><th>Comentários</th><th>Texto revisado</th></tr></thead><tbody>${rows}</tbody></table>
+<footer>Relatório gerado pelo Revisor.</footer></body></html>`;
+  }
+
+  function downloadReport(format) {
+    if (!segments.length) return announce("Adicione pelo menos um segmento antes de baixar.");
+    const content = reportHtml();
+    const isWord = format === "doc";
+    const blob = new Blob([content], { type: isWord ? "application/msword;charset=utf-8" : "text/html;charset=utf-8" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    const date = new Date();
+    const dateLabel = [date.getFullYear(), String(date.getMonth() + 1).padStart(2, "0"), String(date.getDate()).padStart(2, "0")].join("-");
+    link.href = url;
+    link.download = `relatorio-revisao-${dateLabel}.${isWord ? "doc" : "html"}`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    announce(isWord ? "Relatório Word baixado." : "Relatório HTML baixado.");
+  }
+
   $("#startButton").addEventListener("click", startReview);
   $("#backButton").addEventListener("click", () => {
     workspace.classList.add("hidden");
@@ -163,6 +203,8 @@
     link.click();
     URL.revokeObjectURL(link.href);
   });
+  $("#exportHtmlButton").addEventListener("click", () => downloadReport("html"));
+  $("#exportWordButton").addEventListener("click", () => downloadReport("doc"));
 
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");

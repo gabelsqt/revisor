@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f5f4ef" />
+    <title>Revisor — espaço de revisão</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="Revisor, início"><span class="brand-mark">R<span>.</span></span><span>revisor</span></a>
+        <div class="project-label"><span class="status-dot"></span><span id="saveStatus">Salvo neste navegador</span></div>
+        <button class="button button-quiet" id="clearButton" type="button">Novo texto</button>
+      </header>
+
+      <main>
+        <section class="intro" id="intro">
+          <p class="eyebrow">REVISÃO DE COPY, SEM PERDER O CONTEXTO</p>
+          <h1>Seu texto, em processo.</h1>
+          <p class="intro-copy">Cole a copy e revise trecho por trecho. O original, os comentários e a versão final ficam alinhados na mesma tela.</p>
+          <div class="paste-card">
+            <label for="sourceInput">Texto para revisar</label>
+            <textarea id="sourceInput" placeholder="Cole aqui o texto da sua copy…&#10;&#10;Cada parágrafo vira um segmento que você pode revisar individualmente." spellcheck="true"></textarea>
+            <div class="paste-footer"><span>Os parágrafos serão separados em segmentos.</span><button class="button button-primary" id="startButton" type="button">Começar revisão <span aria-hidden="true">↗</span></button></div>
+          </div>
+          <p class="privacy-note"><span aria-hidden="true">▣</span> Seu rascunho fica salvo apenas neste navegador.</p>
+        </section>
+
+        <section class="workspace hidden" id="workspace" aria-label="Mesa de revisão">
+          <div class="workspace-heading">
+            <div><p class="eyebrow">MESA DE REVISÃO</p><h1>Vamos lapidar.</h1><p class="workspace-subtitle"><span id="segmentCount">0 segmentos</span><span class="sep">·</span> edite cada coluna diretamente.</p></div>
+            <div class="workspace-actions"><button class="button button-quiet" id="backButton" type="button">← Trocar texto</button><button class="button button-primary" id="copyButton" type="button">Copiar versão final <span aria-hidden="true">↗</span></button></div>
+          </div>
+          <div class="column-headings" aria-hidden="true"><div><span class="col-index">01</span>Original</div><div><span class="col-index">02</span>Comentários</div><div><span class="col-index">03</span>Texto revisado</div></div>
+          <div class="segments" id="segments"></div>
+          <button class="add-segment" id="addButton" type="button"><span>＋</span> Adicionar segmento</button>
+          <div class="bottom-bar"><span><span class="keyboard-key">⌘</span> Seus rascunhos são salvos automaticamente</span><button class="text-button" id="exportButton" type="button">Baixar como .txt <span aria-hidden="true">↓</span></button></div>
+        </section>
+      </main>
+      <footer class="footer"><span>REVISOR <span class="footer-dot">·</span> FERRAMENTA DE COPY</span><span>Feito para pensar melhor sobre cada palavra.</span></footer>
+    </div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="app.js"></script>
+  </body>
+</html>

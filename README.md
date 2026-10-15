@@ -8,7 +8,8 @@ Um espaço simples para revisar copy trecho por trecho, mantendo original, comen
 - Edite o original, registre comentários e escreva a revisão em colunas paralelas.
 - Adicione ou remova segmentos.
 - Copie ou baixe a versão final.
-- O rascunho é salvo automaticamente no armazenamento local do navegador.
+- Mantenha vários textos em uma biblioteca local, com títulos, abertura, renomeação e exclusão com confirmação em duas etapas.
+- Os textos são salvos automaticamente no armazenamento local do navegador; não há login nem sincronização entre aparelhos.
 
 ## Executar
 
@@ -39,4 +40,4 @@ Depois da primeira publicação, cada novo push para `main` atualiza o site. O r
 
 ## Limites atuais
 
-Os rascunhos ficam no navegador e não sincronizam entre dispositivos. Esta primeira versão organiza a revisão; ela não sugere alterações automaticamente.
+Os textos ficam no navegador e não sincronizam entre dispositivos. Esta primeira versão organiza a revisão; ela não sugere alterações automaticamente.

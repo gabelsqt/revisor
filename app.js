@@ -70,32 +70,32 @@
       list.append(empty);
       return;
     }
-    [...documents].sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || "")).forEach((document) => {
+    [...documents].sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || "")).forEach((savedDocument) => {
       const row = document.createElement("article");
-      row.className = `document-entry${document.id === currentDocumentId ? " is-active" : ""}`;
+      row.className = `document-entry${savedDocument.id === currentDocumentId ? " is-active" : ""}`;
       const open = document.createElement("button");
       open.className = "document-open";
       open.type = "button";
       const title = document.createElement("strong");
-      title.textContent = document.title || "Texto sem título";
+      title.textContent = savedDocument.title || "Texto sem título";
       const detail = document.createElement("small");
-      const count = document.segments?.length || 0;
-      const updated = document.updatedAt ? new Date(document.updatedAt).toLocaleDateString("pt-BR") : "agora";
+      const count = savedDocument.segments?.length || 0;
+      const updated = savedDocument.updatedAt ? new Date(savedDocument.updatedAt).toLocaleDateString("pt-BR") : "agora";
       detail.textContent = `${count} ${count === 1 ? "segmento" : "segmentos"} · ${updated}`;
       open.append(title, detail);
-      open.addEventListener("click", () => openDocument(document.id));
+      open.addEventListener("click", () => openDocument(savedDocument.id));
       const tools = document.createElement("div");
       tools.className = "document-tools";
       const rename = document.createElement("button");
       rename.type = "button";
       rename.className = "document-tool";
       rename.textContent = "Renomear";
-      rename.addEventListener("click", () => renameDocument(document.id));
+      rename.addEventListener("click", () => renameDocument(savedDocument.id));
       const remove = document.createElement("button");
       remove.type = "button";
       remove.className = "document-tool document-delete";
-      remove.textContent = pendingDeleteId === document.id ? "Confirmar exclusão" : "Apagar";
-      remove.addEventListener("click", () => deleteDocument(document.id));
+      remove.textContent = pendingDeleteId === savedDocument.id ? "Confirmar exclusão" : "Apagar";
+      remove.addEventListener("click", () => deleteDocument(savedDocument.id));
       tools.append(rename, remove);
       row.append(open, tools);
       list.append(row);

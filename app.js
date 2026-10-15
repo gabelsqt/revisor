@@ -6,16 +6,35 @@
   const sourceInput = $("#sourceInput");
   const segmentsEl = $("#segments");
   let segments = [];
+  let documents = [];
+  let currentDocumentId = null;
   let saveTimer;
   let toastTimer;
+  let pendingDeleteId = null;
+  let pendingDeleteTimer;
+
+  function saveLibrary() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ documents, activeDocumentId: currentDocumentId }));
+    $("#documentCount").textContent = String(documents.length);
+  }
+
+  function persistNow() {
+    clearTimeout(saveTimer);
+    if (!currentDocumentId) return;
+    const active = documents.find((document) => document.id === currentDocumentId);
+    if (!active) return;
+    active.segments = segments;
+    active.updatedAt = new Date().toISOString();
+    saveLibrary();
+    $("#saveStatus").textContent = "Salvo neste navegador";
+    renderDocumentList();
+  }
 
   function persist() {
+    if (!currentDocumentId) return;
     clearTimeout(saveTimer);
     $("#saveStatus").textContent = "Salvando…";
-    saveTimer = setTimeout(() => {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ segments }));
-      $("#saveStatus").textContent = "Salvo neste navegador";
-    }, 250);
+    saveTimer = setTimeout(persistNow, 250);
   }
 
   function announce(message) {
@@ -33,6 +52,116 @@
 
   function makeSegment(original = "", comments = "", revised = "") {
     return { id: crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`, original, comments, revised };
+  }
+
+  function makeId() {
+    return crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }
+
+  function renderDocumentList() {
+    const list = $("#documentList");
+    if (!list) return;
+    list.replaceChildren();
+    $("#documentCount").textContent = String(documents.length);
+    if (!documents.length) {
+      const empty = document.createElement("p");
+      empty.className = "empty-documents";
+      empty.textContent = "Seus textos salvos aparecerão aqui.";
+      list.append(empty);
+      return;
+    }
+    [...documents].sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || "")).forEach((document) => {
+      const row = document.createElement("article");
+      row.className = `document-entry${document.id === currentDocumentId ? " is-active" : ""}`;
+      const open = document.createElement("button");
+      open.className = "document-open";
+      open.type = "button";
+      const title = document.createElement("strong");
+      title.textContent = document.title || "Texto sem título";
+      const detail = document.createElement("small");
+      const count = document.segments?.length || 0;
+      const updated = document.updatedAt ? new Date(document.updatedAt).toLocaleDateString("pt-BR") : "agora";
+      detail.textContent = `${count} ${count === 1 ? "segmento" : "segmentos"} · ${updated}`;
+      open.append(title, detail);
+      open.addEventListener("click", () => openDocument(document.id));
+      const tools = document.createElement("div");
+      tools.className = "document-tools";
+      const rename = document.createElement("button");
+      rename.type = "button";
+      rename.className = "document-tool";
+      rename.textContent = "Renomear";
+      rename.addEventListener("click", () => renameDocument(document.id));
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "document-tool document-delete";
+      remove.textContent = pendingDeleteId === document.id ? "Confirmar exclusão" : "Apagar";
+      remove.addEventListener("click", () => deleteDocument(document.id));
+      tools.append(rename, remove);
+      row.append(open, tools);
+      list.append(row);
+    });
+  }
+
+  function openDocument(id) {
+    persistNow();
+    const document = documents.find((item) => item.id === id);
+    if (!document) return;
+    currentDocumentId = document.id;
+    segments = document.segments || [];
+    sourceInput.value = segments.map((segment) => segment.original).join("\n\n");
+    $("#documentsDialog").close();
+    showWorkspace();
+    saveLibrary();
+    $("#saveStatus").textContent = "Salvo neste navegador";
+    renderDocumentList();
+  }
+
+  function startNewDocument() {
+    persistNow();
+    currentDocumentId = null;
+    segments = [];
+    sourceInput.value = "";
+    $("#documentsDialog").close();
+    workspace.classList.add("hidden");
+    intro.classList.remove("hidden");
+    renderDocumentList();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    sourceInput.focus();
+  }
+
+  function renameDocument(id) {
+    const document = documents.find((item) => item.id === id);
+    if (!document) return;
+    const name = window.prompt("Nome deste texto:", document.title || "Texto sem título");
+    if (name === null || !name.trim()) return;
+    document.title = name.trim().slice(0, 80);
+    document.updatedAt = new Date().toISOString();
+    saveLibrary();
+    renderDocumentList();
+  }
+
+  function deleteDocument(id) {
+    if (pendingDeleteId !== id) {
+      pendingDeleteId = id;
+      renderDocumentList();
+      announce("Clique em “Confirmar exclusão” para apagar este texto.");
+      clearTimeout(pendingDeleteTimer);
+      pendingDeleteTimer = setTimeout(() => { pendingDeleteId = null; renderDocumentList(); }, 5000);
+      return;
+    }
+    clearTimeout(pendingDeleteTimer);
+    pendingDeleteId = null;
+    documents = documents.filter((document) => document.id !== id);
+    if (currentDocumentId === id) {
+      currentDocumentId = null;
+      segments = [];
+      sourceInput.value = "";
+      workspace.classList.add("hidden");
+      intro.classList.remove("hidden");
+    }
+    saveLibrary();
+    renderDocumentList();
+    announce("Texto apagado.");
   }
 
   function render() {
@@ -98,18 +227,15 @@
       return;
     }
     segments = text.split(/\n\s*\n/).map((part) => part.trim()).filter(Boolean).map((part) => makeSegment(part, "", part));
+    if (!currentDocumentId) {
+      const suggestedTitle = segments[0]?.original.split(/\s+/).slice(0, 7).join(" ").slice(0, 52) || "Texto sem título";
+      const document = { id: makeId(), title: suggestedTitle, segments, updatedAt: new Date().toISOString() };
+      documents.push(document);
+      currentDocumentId = document.id;
+      saveLibrary();
+    }
     persist();
     showWorkspace();
-  }
-
-  function setNewDraft() {
-    segments = [];
-    sourceInput.value = "";
-    localStorage.removeItem(STORAGE_KEY);
-    workspace.classList.add("hidden");
-    intro.classList.remove("hidden");
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    sourceInput.focus();
   }
 
   function finalText() {
@@ -163,7 +289,13 @@
     sourceInput.value = segments.map((segment) => segment.original).join("\n\n");
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
-  $("#clearButton").addEventListener("click", setNewDraft);
+  $("#documentsButton").addEventListener("click", () => {
+    renderDocumentList();
+    $("#documentsDialog").showModal();
+  });
+  $("#closeDocumentsButton").addEventListener("click", () => $("#documentsDialog").close());
+  $("#newDocumentButton").addEventListener("click", startNewDocument);
+  $("#dialogNewDocumentButton").addEventListener("click", startNewDocument);
   $("#addButton").addEventListener("click", () => {
     const segment = makeSegment();
     segments.push(segment);
@@ -208,12 +340,24 @@
 
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
-    if (saved?.segments?.length) {
-      segments = saved.segments;
+    if (Array.isArray(saved?.documents)) {
+      documents = saved.documents;
+      const active = documents.find((document) => document.id === saved.activeDocumentId);
+      if (active) openDocument(active.id);
+      else renderDocumentList();
+    } else if (saved?.segments?.length) {
+      const document = { id: makeId(), title: "Texto salvo", segments: saved.segments, updatedAt: new Date().toISOString() };
+      documents = [document];
+      currentDocumentId = document.id;
+      segments = document.segments;
+      saveLibrary();
       sourceInput.value = segments.map((segment) => segment.original).join("\n\n");
       showWorkspace();
+    } else {
+      renderDocumentList();
     }
   } catch {
     localStorage.removeItem(STORAGE_KEY);
+    renderDocumentList();
   }
 })();

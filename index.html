@@ -34,12 +34,12 @@
         <section class="workspace hidden" id="workspace" aria-label="Mesa de revisão">
           <div class="workspace-heading">
             <div><p class="eyebrow">MESA DE REVISÃO</p><h1>Vamos lapidar.</h1><p class="workspace-subtitle"><span id="segmentCount">0 segmentos</span><span class="sep">·</span> edite cada coluna diretamente.</p></div>
-            <div class="workspace-actions"><button class="button button-quiet" id="backButton" type="button">← Trocar texto</button><button class="button button-primary" id="copyButton" type="button">Copiar versão final <span aria-hidden="true">↗</span></button></div>
+            <div class="workspace-actions"><button class="button button-quiet" id="backButton" type="button">← Trocar texto</button><details class="download-menu" id="downloadMenu"><summary class="button button-quiet">Baixar relatório <span aria-hidden="true">↓</span></summary><div class="download-options"><button type="button" id="exportHtmlButton">HTML (.html)</button><button type="button" id="exportWordButton">Word (.docx)</button></div></details><button class="button button-primary" id="copyButton" type="button">Copiar versão final <span aria-hidden="true">↗</span></button></div>
           </div>
           <div class="column-headings" aria-hidden="true"><div><span class="col-index">01</span>Original</div><div><span class="col-index">02</span>Comentários</div><div><span class="col-index">03</span>Texto revisado</div></div>
           <div class="segments" id="segments"></div>
           <button class="add-segment" id="addButton" type="button"><span>＋</span> Adicionar segmento</button>
-          <div class="bottom-bar"><span><span class="keyboard-key">⌘</span> Seus rascunhos são salvos automaticamente</span><div class="export-actions" aria-label="Baixar relatório"><button class="text-button" id="exportHtmlButton" type="button">Relatório HTML <span aria-hidden="true">↓</span></button><button class="text-button" id="exportWordButton" type="button">Word (.doc) <span aria-hidden="true">↓</span></button><button class="text-button" id="exportButton" type="button">Texto (.txt) <span aria-hidden="true">↓</span></button></div></div>
+          <div class="bottom-bar"><span><span class="keyboard-key">⌘</span> Seus rascunhos são salvos automaticamente</span><button class="text-button" id="exportButton" type="button">Baixar texto simples (.txt) <span aria-hidden="true">↓</span></button></div>
         </section>
       </main>
       <footer class="footer"><span>REVISOR <span class="footer-dot">·</span> FERRAMENTA DE COPY</span><span>Feito para pensar melhor sobre cada palavra.</span></footer>

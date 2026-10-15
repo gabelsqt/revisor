@@ -15,7 +15,7 @@
       <header class="topbar">
         <a class="brand" href="#" aria-label="Revisor, início"><span class="brand-mark">R<span>.</span></span><span>revisor</span></a>
         <div class="project-label"><span class="status-dot"></span><span id="saveStatus">Salvo neste navegador</span></div>
-        <button class="button button-quiet" id="clearButton" type="button">Novo texto</button>
+        <div class="topbar-actions"><button class="button button-quiet" id="documentsButton" type="button">Meus textos <span id="documentCount">0</span></button><button class="button button-primary" id="newDocumentButton" type="button">＋ Novo texto</button></div>
       </header>
 
       <main>
@@ -44,6 +44,12 @@
       </main>
       <footer class="footer"><span>REVISOR <span class="footer-dot">·</span> FERRAMENTA DE COPY</span><span>Feito para pensar melhor sobre cada palavra.</span></footer>
     </div>
+    <dialog class="library-dialog" id="documentsDialog" aria-labelledby="dialogTitle">
+      <div class="dialog-heading"><div><p class="eyebrow">SUA BIBLIOTECA</p><h2 id="dialogTitle">Meus textos</h2></div><button class="dialog-close" id="closeDocumentsButton" type="button" aria-label="Fechar">×</button></div>
+      <p class="dialog-note">Seus textos ficam salvos neste navegador.</p>
+      <div class="document-list" id="documentList"></div>
+      <button class="button button-primary dialog-new" id="dialogNewDocumentButton" type="button">＋ Criar novo texto</button>
+    </dialog>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="app.js"></script>
   </body>

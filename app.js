@@ -266,20 +266,103 @@
 <footer>Relatório gerado pelo Revisor.</footer></body></html>`;
   }
 
+  function xmlEscape(value) {
+    return String(value).replace(/[&<>"']/g, (character) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&apos;",
+    })[character]);
+  }
+
+  function docxParagraph(value, options = {}) {
+    const lines = String(value).split(/\r?\n/);
+    const runStyle = `${options.bold ? "<w:b/>" : ""}${options.color ? `<w:color w:val="${options.color}"/>` : ""}${options.size ? `<w:sz w:val="${options.size}"/>` : ""}`;
+    const runs = lines.map((line, index) => `${index ? "<w:r><w:br/></w:r>" : ""}<w:r>${runStyle ? `<w:rPr>${runStyle}</w:rPr>` : ""}<w:t xml:space="preserve">${xmlEscape(line || " ")}</w:t></w:r>`).join("");
+    const after = options.after ?? 100;
+    return `<w:p><w:pPr><w:spacing w:after="${after}"/></w:pPr>${runs}</w:p>`;
+  }
+
+  function docxCell(value, width, header = false) {
+    const fill = header ? '<w:shd w:fill="344F43"/><w:tcMar><w:top w:w="110" w:type="dxa"/><w:start w:w="100" w:type="dxa"/><w:bottom w:w="110" w:type="dxa"/><w:end w:w="100" w:type="dxa"/></w:tcMar>' : '<w:tcMar><w:top w:w="100" w:type="dxa"/><w:start w:w="100" w:type="dxa"/><w:bottom w:w="100" w:type="dxa"/><w:end w:w="100" w:type="dxa"/></w:tcMar>';
+    const text = docxParagraph(value, { bold: header, color: header ? "FFFFFF" : "27352C", after: 0 });
+    return `<w:tc><w:tcPr><w:tcW w:w="${width}" w:type="dxa"/>${fill}<w:vAlign w:val="top"/></w:tcPr>${text}</w:tc>`;
+  }
+
+  function crc32(bytes) {
+    let crc = 0xffffffff;
+    for (const byte of bytes) {
+      crc ^= byte;
+      for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+    }
+    return (crc ^ 0xffffffff) >>> 0;
+  }
+
+  function zipFiles(files) {
+    const encoder = new TextEncoder();
+    const localParts = [];
+    const centralParts = [];
+    let localOffset = 0;
+    let centralSize = 0;
+    files.forEach(([name, content]) => {
+      const nameBytes = encoder.encode(name);
+      const data = encoder.encode(content);
+      const crc = crc32(data);
+      const local = new Uint8Array(30 + nameBytes.length);
+      const lv = new DataView(local.buffer);
+      lv.setUint32(0, 0x04034b50, true); lv.setUint16(4, 20, true); lv.setUint16(6, 0x0800, true);
+      lv.setUint16(8, 0, true); lv.setUint16(10, 0, true); lv.setUint16(12, 0x21, true);
+      lv.setUint32(14, crc, true); lv.setUint32(18, data.length, true); lv.setUint32(22, data.length, true);
+      lv.setUint16(26, nameBytes.length, true); lv.setUint16(28, 0, true); local.set(nameBytes, 30);
+      localParts.push(local, data);
+
+      const central = new Uint8Array(46 + nameBytes.length);
+      const cv = new DataView(central.buffer);
+      cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 20, true); cv.setUint16(6, 20, true);
+      cv.setUint16(8, 0x0800, true); cv.setUint16(10, 0, true); cv.setUint16(12, 0, true); cv.setUint16(14, 0x21, true);
+      cv.setUint32(16, crc, true); cv.setUint32(20, data.length, true); cv.setUint32(24, data.length, true);
+      cv.setUint16(28, nameBytes.length, true); cv.setUint16(30, 0, true); cv.setUint16(32, 0, true);
+      cv.setUint16(34, 0, true); cv.setUint16(36, 0, true); cv.setUint32(38, 0, true); cv.setUint32(42, localOffset, true);
+      central.set(nameBytes, 46);
+      centralParts.push(central);
+      localOffset += local.length + data.length;
+      centralSize += central.length;
+    });
+    const end = new Uint8Array(22);
+    const ev = new DataView(end.buffer);
+    ev.setUint32(0, 0x06054b50, true); ev.setUint16(4, 0, true); ev.setUint16(6, 0, true);
+    ev.setUint16(8, files.length, true); ev.setUint16(10, files.length, true);
+    ev.setUint32(12, centralSize, true); ev.setUint32(16, localOffset, true); ev.setUint16(20, 0, true);
+    return new Blob([...localParts, ...centralParts, end], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+  }
+
+  function reportDocx() {
+    const widths = [700, 4900, 4400, 5400];
+    const border = '<w:tblBorders><w:top w:val="single" w:sz="5" w:color="D8D9D1"/><w:left w:val="single" w:sz="5" w:color="D8D9D1"/><w:bottom w:val="single" w:sz="5" w:color="D8D9D1"/><w:right w:val="single" w:sz="5" w:color="D8D9D1"/><w:insideH w:val="single" w:sz="5" w:color="D8D9D1"/><w:insideV w:val="single" w:sz="5" w:color="D8D9D1"/></w:tblBorders>';
+    const headers = ["#", "Original", "Comentários", "Texto revisado"];
+    const headerRow = `<w:tr>${headers.map((value, index) => docxCell(value, widths[index], true)).join("")}</w:tr>`;
+    const rows = segments.map((segment, index) => {
+      const values = [String(index + 1).padStart(2, "0"), segment.original || "—", segment.comments || "—", segment.revised.trim() || segment.original || "—"];
+      return `<w:tr>${values.map((value, cellIndex) => docxCell(value, widths[cellIndex])).join("")}</w:tr>`;
+    }).join("");
+    const date = new Date().toLocaleDateString("pt-BR");
+    const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${docxParagraph("Correções da copy", { bold: true, color: "263D33", size: 36, after: 80 })}${docxParagraph(`Relatório de revisão · ${date} · ${segments.length} ${segments.length === 1 ? "segmento" : "segmentos"}`, { after: 260 })}<w:tbl><w:tblPr><w:tblW w:w="15400" w:type="dxa"/><w:tblLayout w:type="fixed"/>${border}</w:tblPr><w:tblGrid>${widths.map((width) => `<w:gridCol w:w="${width}"/>`).join("")}</w:tblGrid>${headerRow}${rows}</w:tbl><w:sectPr><w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/><w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720" w:header="360" w:footer="360" w:gutter="0"/></w:sectPr></w:body></w:document>`;
+    const contentTypes = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>';
+    const relationships = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>';
+    return zipFiles([["[Content_Types].xml", contentTypes], ["_rels/.rels", relationships], ["word/document.xml", documentXml]]);
+  }
+
   function downloadReport(format) {
     if (!segments.length) return announce("Adicione pelo menos um segmento antes de baixar.");
-    const content = reportHtml();
-    const isWord = format === "doc";
-    const blob = new Blob([content], { type: isWord ? "application/msword;charset=utf-8" : "text/html;charset=utf-8" });
+    const isWord = format === "docx";
+    const blob = isWord ? reportDocx() : new Blob([reportHtml()], { type: "text/html;charset=utf-8" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     const date = new Date();
     const dateLabel = [date.getFullYear(), String(date.getMonth() + 1).padStart(2, "0"), String(date.getDate()).padStart(2, "0")].join("-");
     link.href = url;
-    link.download = `relatorio-revisao-${dateLabel}.${isWord ? "doc" : "html"}`;
+    link.download = `relatorio-revisao-${dateLabel}.${isWord ? "docx" : "html"}`;
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    announce(isWord ? "Relatório Word baixado." : "Relatório HTML baixado.");
+    $("#downloadMenu").open = false;
+    announce(isWord ? "Relatório Word (.docx) baixado." : "Relatório HTML baixado.");
   }
 
   $("#startButton").addEventListener("click", startReview);
@@ -336,7 +419,7 @@
     URL.revokeObjectURL(link.href);
   });
   $("#exportHtmlButton").addEventListener("click", () => downloadReport("html"));
-  $("#exportWordButton").addEventListener("click", () => downloadReport("doc"));
+  $("#exportWordButton").addEventListener("click", () => downloadReport("docx"));
 
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");

@@ -366,6 +366,10 @@
   }
 
   $("#startButton").addEventListener("click", startReview);
+  $("#homeLink").addEventListener("click", (event) => {
+    event.preventDefault();
+    startNewDocument();
+  });
   $("#backButton").addEventListener("click", () => {
     workspace.classList.add("hidden");
     intro.classList.remove("hidden");

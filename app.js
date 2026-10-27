@@ -59,7 +59,7 @@
     return [first, second].map((value) => String(value || "").trim()).filter(Boolean).join(" ");
   }
 
-  function splitSegment(segment) {
+  function splitSegmentIntoSentences(segment) {
     const originalParts = splitSentences(segment.original);
     if (originalParts.length < 2) {
       announce("Este trecho não tem mais de uma frase para dividir.");
@@ -71,17 +71,64 @@
       announce("A versão revisada tem outra quantidade de frases. Ajuste-a antes de dividir para manter o alinhamento.");
       return;
     }
+    const position = segments.findIndex((item) => item.id === segment.id);
+    if (position < 0) return;
     const pieces = originalParts.map((original, index) => makeSegment(
       original,
       index === 0 ? segment.comments : "",
       revisedParts[index] || ""
     ));
-    const position = segments.findIndex((item) => item.id === segment.id);
-    if (position < 0) return;
     segments.splice(position, 1, ...pieces);
     render();
     persist();
     announce(`Trecho dividido em ${pieces.length} frases.`);
+  }
+
+  function splitSegmentAtSelection(segment, originalTextarea) {
+    const original = String(segment.original || "");
+    const revised = String(segment.revised || "");
+    const start = originalTextarea.selectionStart;
+    const end = originalTextarea.selectionEnd;
+    const originalLeft = original.slice(0, end).trim();
+    const originalRight = original.slice(end).trim();
+    if (!originalLeft || !originalRight) {
+      announce("Posicione o cursor entre as duas partes que quer separar.");
+      return;
+    }
+
+    let revisedLeft;
+    let revisedRight;
+    if (!revised || revised.trim() === original.trim()) {
+      revisedLeft = revised ? revised.slice(0, end).trim() : originalLeft;
+      revisedRight = revised ? revised.slice(end).trim() : originalRight;
+    } else if (end > start) {
+      const marker = original.slice(start, end);
+      const markerAt = revised.indexOf(marker);
+      if (!marker.trim() || markerAt < 0 || revised.indexOf(marker, markerAt + marker.length) >= 0) {
+        announce("Na versão revisada, selecione um trecho curto que apareça uma única vez para localizar a divisão.");
+        return;
+      }
+      revisedLeft = revised.slice(0, markerAt + marker.length).trim();
+      revisedRight = revised.slice(markerAt + marker.length).trim();
+      if (!revisedLeft || !revisedRight) {
+        announce("Selecione um ponto que deixe texto dos dois lados na versão revisada.");
+        return;
+      }
+    } else {
+      announce("Como a revisão já mudou, selecione um trecho curto que apareça também nela para localizar a divisão.");
+      return;
+    }
+
+    const position = segments.findIndex((item) => item.id === segment.id);
+    if (position < 0) return;
+    const pieces = [
+      makeSegment(originalLeft, segment.comments, revisedLeft),
+      makeSegment(originalRight, "", revisedRight),
+    ];
+    segments.splice(position, 1, ...pieces);
+    render();
+    persist();
+    announce("Trecho dividido no ponto selecionado.");
   }
 
   function mergeWithPrevious(index) {
@@ -224,6 +271,7 @@
       const row = document.createElement("article");
       row.className = "segment-row";
       row.dataset.id = segment.id;
+      let originalTextarea;
       const cells = [
         ["original", "Original", segment.original, "Trecho original"],
         ["comments", "Comentários", segment.comments, "Anote o que precisa mudar…"],
@@ -238,7 +286,10 @@
         const textarea = document.createElement("textarea");
         textarea.value = value;
         textarea.placeholder = placeholder;
-        if (key === "original") textarea.readOnly = true;
+        if (key === "original") {
+          textarea.readOnly = true;
+          originalTextarea = textarea;
+        }
         textarea.setAttribute("aria-label", `${label}, segmento ${index + 1}`);
         textarea.rows = Math.max(3, Math.min(8, Math.ceil((value.length || 55) / 48)));
         textarea.addEventListener("input", () => {
@@ -265,9 +316,17 @@
       const split = document.createElement("button");
       split.type = "button";
       split.className = "segment-action";
-      split.textContent = "Dividir em frases";
-      split.addEventListener("click", () => splitSegment(segment));
+      split.textContent = "Dividir no ponto selecionado";
+      split.title = "Posicione o cursor entre as partes no texto original. Se o texto revisado mudou, selecione um trecho correspondente.";
+      split.setAttribute("aria-label", `Dividir segmento ${index + 1} no ponto selecionado`);
+      split.addEventListener("click", () => splitSegmentAtSelection(segment, originalTextarea));
       actions.append(split);
+      const splitSentencesButton = document.createElement("button");
+      splitSentencesButton.type = "button";
+      splitSentencesButton.className = "segment-action";
+      splitSentencesButton.textContent = "Dividir em frases";
+      splitSentencesButton.addEventListener("click", () => splitSegmentIntoSentences(segment));
+      actions.append(splitSentencesButton);
       if (index > 0) {
         const merge = document.createElement("button");
         merge.type = "button";

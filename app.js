@@ -45,6 +45,58 @@
     toastTimer = setTimeout(() => toast.classList.remove("show"), 2300);
   }
 
+  function splitSentences(text) {
+    const value = String(text || "").trim();
+    if (!value) return [];
+    if (typeof Intl.Segmenter === "function") {
+      return [...new Intl.Segmenter("pt-BR", { granularity: "sentence" }).segment(value)]
+        .map((item) => item.segment.trim()).filter(Boolean);
+    }
+    return (value.match(/[^.!?]+(?:[.!?]+["'”’)]*)?|[.!?]+/g) || []).map((part) => part.trim()).filter(Boolean);
+  }
+
+  function joinSegmentText(first, second) {
+    return [first, second].map((value) => String(value || "").trim()).filter(Boolean).join(" ");
+  }
+
+  function splitSegment(segment) {
+    const originalParts = splitSentences(segment.original);
+    if (originalParts.length < 2) {
+      announce("Este trecho não tem mais de uma frase para dividir.");
+      return;
+    }
+    const revisedText = String(segment.revised || "").trim();
+    const revisedParts = revisedText ? splitSentences(revisedText) : originalParts;
+    if (revisedText && revisedText !== String(segment.original || "").trim() && revisedParts.length !== originalParts.length) {
+      announce("A versão revisada tem outra quantidade de frases. Ajuste-a antes de dividir para manter o alinhamento.");
+      return;
+    }
+    const pieces = originalParts.map((original, index) => makeSegment(
+      original,
+      index === 0 ? segment.comments : "",
+      revisedParts[index] || ""
+    ));
+    const position = segments.findIndex((item) => item.id === segment.id);
+    if (position < 0) return;
+    segments.splice(position, 1, ...pieces);
+    render();
+    persist();
+    announce(`Trecho dividido em ${pieces.length} frases.`);
+  }
+
+  function mergeWithPrevious(index) {
+    if (index < 1) return;
+    const previous = segments[index - 1];
+    const current = segments[index];
+    previous.original = joinSegmentText(previous.original, current.original);
+    previous.comments = joinSegmentText(previous.comments, current.comments);
+    previous.revised = joinSegmentText(previous.revised || previous.original, current.revised || current.original);
+    segments.splice(index, 1);
+    render();
+    persist();
+    announce("Trechos unidos.");
+  }
+
   function updateCount() {
     const count = segments.length;
     $("#segmentCount").textContent = `${count} ${count === 1 ? "segmento" : "segmentos"}`;
@@ -206,7 +258,23 @@
         render();
         persist();
       });
-      row.append(remove);
+      const actions = document.createElement("div");
+      actions.className = "segment-actions";
+      const split = document.createElement("button");
+      split.type = "button";
+      split.className = "segment-action";
+      split.textContent = "Dividir em frases";
+      split.addEventListener("click", () => splitSegment(segment));
+      actions.append(split);
+      if (index > 0) {
+        const merge = document.createElement("button");
+        merge.type = "button";
+        merge.className = "segment-action";
+        merge.textContent = "Unir com o anterior";
+        merge.addEventListener("click", () => mergeWithPrevious(index));
+        actions.append(merge);
+      }
+      row.append(actions, remove);
       segmentsEl.append(row);
     });
     updateCount();

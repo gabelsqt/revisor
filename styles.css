@@ -10,3 +10,6 @@
 
 .download-menu{position:relative}.download-menu>summary{display:inline-block;list-style:none;cursor:pointer}.download-menu>summary::-webkit-details-marker{display:none}.download-menu[open]>summary{background:#ecebe4}.download-options{position:absolute;z-index:20;top:calc(100% + 8px);right:0;min-width:150px;padding:5px;border:1px solid var(--line);border-radius:8px;background:var(--paper);box-shadow:0 10px 28px #2733281f;display:grid}.download-options button{border:0;border-radius:5px;background:transparent;text-align:left;padding:10px 11px;color:#40483f;font:600 12px "DM Sans",sans-serif;cursor:pointer}.download-options button:hover{background:#f0f0e9;color:var(--green)}
 @media(max-width:760px){.workspace-actions{flex-wrap:wrap}.download-options{right:auto;left:0}}
+
+.split-control{display:flex;align-items:center;gap:8px;color:#85877e;font-size:11px}.split-control select{border:1px solid #e5e3db;border-radius:6px;background:#fffefa;color:#344f43;padding:7px 26px 7px 9px;font:600 11px "DM Sans",sans-serif;cursor:pointer}.split-control select:focus{outline:2px solid #cbd8ca;outline-offset:1px}
+@media(max-width:760px){.split-control{flex-wrap:wrap}}

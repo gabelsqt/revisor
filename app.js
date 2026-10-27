@@ -226,7 +226,19 @@
       announce("Cole o texto que você quer revisar primeiro.");
       return;
     }
-    segments = text.split(/\n\s*\n/).map((part) => part.trim()).filter(Boolean).map((part) => makeSegment(part, "", part));
+    const paragraphs = text.split(/\n\s*\n/).map((part) => part.trim()).filter(Boolean);
+    const mode = $("#splitMode").value;
+    let parts = paragraphs;
+    if (mode === "sentences") {
+      const segmenter = typeof Intl.Segmenter === "function"
+        ? new Intl.Segmenter("pt-BR", { granularity: "sentence" })
+        : null;
+      parts = paragraphs.flatMap((paragraph) => {
+        if (segmenter) return [...segmenter.segment(paragraph)].map((item) => item.segment.trim()).filter(Boolean);
+        return (paragraph.match(/[^.!?]+(?:[.!?]+["'”’)]*)?|[.!?]+/g) || []).map((part) => part.trim()).filter(Boolean);
+      });
+    }
+    segments = parts.map((part) => makeSegment(part, "", part));
     if (!currentDocumentId) {
       const suggestedTitle = segments[0]?.original.split(/\s+/).slice(0, 7).join(" ").slice(0, 52) || "Texto sem título";
       const document = { id: makeId(), title: suggestedTitle, segments, updatedAt: new Date().toISOString() };

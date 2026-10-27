@@ -4,7 +4,7 @@ Um espaço simples para revisar copy trecho por trecho, mantendo original, comen
 
 ## Primeira versão
 
-- Cole uma copy e separe-a automaticamente em segmentos por parágrafo.
+- Cole uma copy e escolha se quer separar os segmentos por parágrafo ou por frase.
 - Edite o original, registre comentários e escreva a revisão em colunas paralelas.
 - Adicione ou remova segmentos.
 - Copie ou baixe a versão final.

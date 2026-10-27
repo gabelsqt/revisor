@@ -25,8 +25,8 @@
           <p class="intro-copy">Cole a copy e revise trecho por trecho. O original, os comentários e a versão final ficam alinhados na mesma tela.</p>
           <div class="paste-card">
             <label for="sourceInput">Texto para revisar</label>
-            <textarea id="sourceInput" placeholder="Cole aqui o texto da sua copy…&#10;&#10;Cada parágrafo vira um segmento que você pode revisar individualmente." spellcheck="true"></textarea>
-            <div class="paste-footer"><span>Os parágrafos serão separados em segmentos.</span><button class="button button-primary" id="startButton" type="button">Começar revisão <span aria-hidden="true">↗</span></button></div>
+            <textarea id="sourceInput" placeholder="Cole aqui o texto da sua copy…" spellcheck="true"></textarea>
+            <div class="paste-footer"><label class="split-control" for="splitMode">Dividir em <select id="splitMode"><option value="paragraphs">Parágrafos</option><option value="sentences">Frases</option></select></label><button class="button button-primary" id="startButton" type="button">Começar revisão <span aria-hidden="true">↗</span></button></div>
           </div>
           <p class="privacy-note"><span aria-hidden="true">▣</span> Seu rascunho fica salvo apenas neste navegador.</p>
         </section>
@@ -51,6 +51,6 @@
       <button class="button button-primary dialog-new" id="dialogNewDocumentButton" type="button">＋ Criar novo texto</button>
     </dialog>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="app.js?v=20261015-home-link"></script>
+    <script src="app.js?v=20261027-sentence-splitting"></script>
   </body>
 </html>

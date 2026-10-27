@@ -88,9 +88,11 @@
     if (index < 1) return;
     const previous = segments[index - 1];
     const current = segments[index];
-    previous.original = joinSegmentText(previous.original, current.original);
+    const firstOriginal = previous.original;
+    const secondOriginal = current.original;
+    previous.original = joinSegmentText(firstOriginal, secondOriginal);
     previous.comments = joinSegmentText(previous.comments, current.comments);
-    previous.revised = joinSegmentText(previous.revised || previous.original, current.revised || current.original);
+    previous.revised = joinSegmentText(previous.revised || firstOriginal, current.revised || secondOriginal);
     segments.splice(index, 1);
     render();
     persist();

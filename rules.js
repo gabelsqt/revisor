@@ -95,53 +95,128 @@
 
 
 
+
+  // Guarda a última versão exibida para manter decisões de ignorar após edições.
+  const lastRenderedText = new Map();
+
+  function getIgnored(id) {
+    const saved = window.revisorCorrectionStore?.getIgnored(id);
+    return Array.isArray(saved) ? saved : [];
+  }
+
+  function saveIgnored(id, items) {
+    window.revisorCorrectionStore?.setIgnored(id, items);
+  }
+
+  function rebaseRanges(items, oldText, newText) {
+    if (oldText === newText) return items;
+    let prefix = 0;
+    while (prefix < oldText.length && prefix < newText.length &&
+      oldText[prefix] === newText[prefix]) prefix++;
+    let suffix = 0;
+    while (suffix < oldText.length - prefix && suffix < newText.length - prefix &&
+      oldText[oldText.length - 1 - suffix] === newText[newText.length - 1 - suffix]) suffix++;
+    const oldChangeEnd = oldText.length - suffix;
+    const delta = newText.length - oldText.length;
+    return items.flatMap((item) => {
+      if (item.end <= prefix) return [item];
+      if (item.start >= oldChangeEnd) {
+        return [{ ...item, start: item.start + delta, end: item.end + delta }];
+      }
+      return [];
+    }).filter((item) => item.start >= 0 && item.end <= newText.length &&
+      newText.slice(item.start, item.end) === oldText.slice(
+        item.start <= prefix ? item.start : item.start - delta,
+        item.end <= prefix ? item.end : item.end - delta
+      ));
+  }
+
+  function handleTextChange(row, nextText, accepted = false) {
+    const id = row.dataset.id;
+    const before = lastRenderedText.get(id);
+    if (typeof before === "string" && before !== nextText) {
+      const ignored = rebaseRanges(getIgnored(id), before, nextText);
+      saveIgnored(id, ignored);
+      const priorCheck = checkedSegments.get(id);
+      if (priorCheck?.text === before) {
+        if (accepted) {
+          const oldEntries = priorCheck.matches.map((entry) => ({
+            ...entry, start: Number(entry.offset), end: Number(entry.offset) + Number(entry.length)
+          })).filter((entry) => Number.isInteger(entry.start) && Number.isInteger(entry.end));
+          const revisedEntries = rebaseRanges(oldEntries, before, nextText).map((entry) => ({
+            ...entry, offset: entry.start, length: entry.end - entry.start
+          }));
+          checkedSegments.set(id, { text: nextText, matches: revisedEntries });
+        } else {
+          checkedSegments.delete(id);
+        }
+      }
+    }
+  }
+
   function analyzeText(text, rowId) {
-    const matches = [];
-    const ranges = [];
+    const candidates = [];
     const source = String(text || "").slice(0, 10000);
-    if (!source) return { matches, ranges };
+    if (!source) return { matches: [], ranges: [] };
+    const dismissed = getIgnored(rowId).filter((item) =>
+      Number.isInteger(item.start) && Number.isInteger(item.end) &&
+      source.slice(item.start, item.end) === item.text
+    );
+
     for (const [origin, group] of [["personalizada", rules], ["local", BASIC_RULES]]) {
       for (const rule of group) {
         if (!rule.enabled) continue;
         try {
           const regex = matcher(rule);
           let count = 0;
-          let example = "";
           let found;
           while (count < 60 && (found = regex.exec(source)) !== null) {
             if (!found[0]) { regex.lastIndex += 1; continue; }
             count++;
-            if (!example) example = found[0].slice(0, 90);
-            if (ranges.length < 300) ranges.push({ start: found.index, end: found.index + found[0].length, origin });
+            candidates.push({
+              start: found.index, end: found.index + found[0].length,
+              text: found[0], origin, note: rule.note || "",
+              replacements: rule.suggestion ? [rule.suggestion] : []
+            });
           }
-          if (count) matches.push({ rule, count, example, origin });
         } catch {
-          // Regras inválidas são ignoradas para não interromper o editor.
+          // Uma regra inválida não pode travar a edição.
         }
       }
     }
+
     const service = checkedSegments.get(rowId);
     if (service?.text === text) {
       for (const entry of service.matches) {
-        const position = Number(entry.offset);
+        const start = Number(entry.offset);
         const length = Number(entry.length);
-        if (!Number.isInteger(position) || !Number.isInteger(length) || length < 1 ||
-            position < 0 || position + length > source.length) continue;
-        const suggestion = Array.isArray(entry.replacements) ?
-          entry.replacements.slice(0, 3).map((replacement) => String(replacement.value || "")).filter(Boolean).join(" / ") : "";
-        const rule = { suggestion, note: String(entry.message || "Rever esta passagem"), pattern: source.slice(position, position + length) };
-        matches.push({ rule, count: 1, example: rule.pattern, origin: "gramática" });
-        ranges.push({ start: position, end: position + length, origin: "gramática" });
+        if (!Number.isInteger(start) || !Number.isInteger(length) || length < 1 ||
+            start < 0 || start + length > source.length) continue;
+        candidates.push({
+          start, end: start + length, text: source.slice(start, start + length),
+          origin: "gramática", note: String(entry.message || "Rever esta passagem"),
+          replacements: Array.isArray(entry.replacements)
+            ? entry.replacements.slice(0, 5).map((replacement) => String(replacement.value ?? ""))
+            : []
+        });
       }
     }
-    const priority = { gramática: 0, personalizada: 1, local: 2 };
-    ranges.sort((a, b) => priority[a.origin] - priority[b.origin] || a.start - b.start || b.end - a.end);
+
+    const priority = { personalizada: 0, gramática: 1, local: 2 };
+    candidates.sort((a, b) => priority[a.origin] - priority[b.origin] ||
+      a.start - b.start || b.end - a.end);
     const selected = [];
-    for (const range of ranges) {
-      if (!selected.some((existing) => range.start < existing.end && existing.start < range.end)) selected.push(range);
+    for (const match of candidates) {
+      const overlap = (other) => match.start < other.end && other.start < match.end;
+      if (dismissed.some(overlap) || selected.some(overlap)) continue;
+      selected.push(match);
     }
     selected.sort((a, b) => a.start - b.start);
-    return { matches, ranges: selected };
+    return {
+      matches: selected,
+      ranges: selected.map((item) => ({ start: item.start, end: item.end, origin: item.origin })),
+      ignoredCount: dismissed.length,
+    };
   }
 
   function syncHighlightMirror(textarea) {
@@ -192,9 +267,47 @@
     syncHighlightMirror(textarea);
   }
 
+
+  function applySuggestion(row, textarea, item, choice) {
+    // Só modifica o trecho quando o usuário clica explicitamente em Aceitar.
+    if (textarea.value.slice(item.start, item.end) !== item.text) {
+      refreshRow(row);
+      notify("O trecho foi alterado. Confira a sugestão atualizada.");
+      return;
+    }
+    const before = textarea.value;
+    textarea.setRangeText(choice, item.start, item.end, "end");
+    const after = textarea.value;
+    handleTextChange(row, after, true);
+    lastRenderedText.set(row.dataset.id, after);
+    // Dispara o salvamento automático existente no editor.
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    textarea.focus();
+    notify("Correção aceita: apenas esta ocorrência foi alterada.");
+  }
+
+  function ignoreSuggestion(row, textarea, item) {
+    if (textarea.value.slice(item.start, item.end) !== item.text) {
+      refreshRow(row);
+      return;
+    }
+    const id = row.dataset.id;
+    const decisions = getIgnored(id);
+    if (!decisions.some((ignored) => ignored.start === item.start && ignored.end === item.end)) {
+      saveIgnored(id, [...decisions, { start: item.start, end: item.end, text: item.text }]);
+    }
+    refreshRow(row);
+    notify("Sugestão ignorada. Você pode reexibi-la neste trecho.");
+  }
+
   function refreshRow(row) {
     const revised = row.querySelector(".segment-cell.revised textarea");
     if (!revised) return;
+    const text = revised.value;
+    // Rebase em edições normais; ao aceitar, o rebase já foi feito explicitamente.
+    handleTextChange(row, text);
+    lastRenderedText.set(row.dataset.id, text);
+
     let feedback = row.querySelector(".rule-feedback");
     if (!feedback) {
       feedback = document.createElement("div");
@@ -202,37 +315,91 @@
       feedback.setAttribute("aria-live", "polite");
       revised.insertAdjacentElement("afterend", feedback);
     }
-    const { matches, ranges } = analyzeText(revised.value, row.dataset.id);
+    const { matches, ranges } = analyzeText(text, row.dataset.id);
     updateHighlightMirror(revised, ranges);
     feedback.replaceChildren();
-    feedback.hidden = !matches.length;
-    if (!matches.length) return;
-    const title = document.createElement("p");
-    title.className = "rule-feedback-heading";
-    title.textContent = matches.length === 1 ? "1 sugestão encontrada" :
-      matches.length + " sugestões encontradas";
-    feedback.append(title);
-    const list = document.createElement("ul");
-    list.className = "rule-feedback-list";
-    for (const item of matches.slice(0, 8)) {
-      const li = document.createElement("li");
-      li.className = "rule-feedback-item";
-      const matchLabel = document.createElement("span");
-      matchLabel.textContent = "“" + item.example + "”" +
-        (item.rule.suggestion ? " → “" + item.rule.suggestion + "”" : " · conferir");
-      const context = document.createElement("small");
-      context.textContent = (item.origin === "gramática" ? "LanguageTool" : item.origin === "local" ? "Verificador local" : "Regra pessoal") + " · " + (item.rule.note ? item.rule.note + " · " : "") +
-        item.count + (item.count === 1 ? " ocorrência" : " ocorrências");
-      li.append(matchLabel, context);
-      list.append(li);
+    const ignored = getIgnored(row.dataset.id).filter((item) =>
+      text.slice(item.start, item.end) === item.text
+    );
+    feedback.hidden = matches.length === 0 && ignored.length === 0;
+    if (matches.length) {
+      const title = document.createElement("p");
+      title.className = "rule-feedback-heading";
+      title.textContent = matches.length === 1 ? "1 sugestão encontrada" :
+        matches.length + " sugestões encontradas";
+      feedback.append(title);
+      const list = document.createElement("ul");
+      list.className = "rule-feedback-list";
+      for (const item of matches.slice(0, 30)) {
+        const li = document.createElement("li");
+        li.className = "rule-feedback-item";
+        const matchLabel = document.createElement("span");
+        matchLabel.textContent = "“" + item.text + "”" +
+          (item.replacements.length ? " → “" + item.replacements[0] + "”" : " · revisar manualmente");
+        const context = document.createElement("small");
+        context.textContent = (item.origin === "gramática" ? "LanguageTool" :
+          item.origin === "local" ? "Verificador local" : "Regra pessoal") +
+          (item.note ? " · " + item.note : "");
+        li.append(matchLabel, context);
+
+        const actions = document.createElement("div");
+        actions.className = "rule-suggestion-actions";
+        if (item.replacements.length) {
+          let selector;
+          if (item.replacements.length > 1) {
+            selector = document.createElement("select");
+            selector.className = "rule-suggestion-select";
+            selector.setAttribute("aria-label", "Correção desejada para " + item.text);
+            for (const replacement of item.replacements) {
+              const option = document.createElement("option");
+              option.value = replacement;
+              option.textContent = replacement || "(remover)";
+              selector.append(option);
+            }
+            actions.append(selector);
+          }
+          const accept = document.createElement("button");
+          accept.className = "rule-suggestion-accept";
+          accept.type = "button";
+          accept.textContent = "Aceitar";
+          accept.setAttribute("aria-label", "Aceitar correção para " + item.text);
+          accept.addEventListener("click", () => {
+            applySuggestion(row, revised, item, selector ? selector.value : item.replacements[0]);
+          });
+          actions.append(accept);
+        }
+        const ignore = document.createElement("button");
+        ignore.className = "rule-suggestion-ignore";
+        ignore.type = "button";
+        ignore.textContent = "Ignorar";
+        ignore.setAttribute("aria-label", "Ignorar sugestão para " + item.text);
+        ignore.addEventListener("click", () => ignoreSuggestion(row, revised, item));
+        actions.append(ignore);
+        li.append(actions);
+        list.append(li);
+      }
+      if (matches.length > 30) {
+        const more = document.createElement("li");
+        more.className = "rule-feedback-more";
+        more.textContent = "Mais " + (matches.length - 30) + " sugestões. Edite ou corrija as primeiras para continuar.";
+        list.append(more);
+      }
+      feedback.append(list);
     }
-    if (matches.length > 8) {
-      const more = document.createElement("li");
-      more.className = "rule-feedback-more";
-      more.textContent = "Mais " + (matches.length - 8) + " regras encontradas";
-      list.append(more);
+
+    if (ignored.length) {
+      const restore = document.createElement("button");
+      restore.type = "button";
+      restore.className = "rule-restore-ignored";
+      restore.textContent = ignored.length === 1 ?
+        "Reexibir 1 sugestão ignorada" : "Reexibir " + ignored.length + " sugestões ignoradas";
+      restore.addEventListener("click", () => {
+        saveIgnored(row.dataset.id, []);
+        refreshRow(row);
+        notify("Sugestões ignoradas restauradas neste trecho.");
+      });
+      feedback.append(restore);
     }
-    feedback.append(list);
   }
 
   function refreshAll() {
@@ -243,7 +410,6 @@
     checkedSegments.set(id, { text, matches: Array.isArray(entries) ? entries : [] });
     refreshAll();
   };
-
 
   function renderRuleList() {
     const list = $("#ruleList");

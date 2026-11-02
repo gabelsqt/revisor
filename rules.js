@@ -60,11 +60,12 @@
     refreshAll();
   }
 
-  function matchesFor(text) {
-    const matches = [];
-    const source = String(text || "").slice(0, 10000);
-    if (!source) return matches;
 
+  function analyzeText(text) {
+    const matches = [];
+    const ranges = [];
+    const source = String(text || "").slice(0, 10000);
+    if (!source) return { matches, ranges };
     for (const rule of rules) {
       if (!rule.enabled) continue;
       try {
@@ -74,18 +75,79 @@
         let found;
         while (count < 100 && (found = regex.exec(source)) !== null) {
           if (!found[0]) {
+            // Avance mesmo em expressões que podem encontrar cadeias vazias.
             regex.lastIndex += 1;
             continue;
           }
           count += 1;
           if (!example) example = found[0].slice(0, 90);
+          if (ranges.length < 400) {
+            ranges.push({ start: found.index, end: found.index + found[0].length });
+          }
         }
         if (count) matches.push({ rule, count, example });
       } catch {
-        // Uma regra inválida não deve interromper a revisão.
+        // Uma regra inválida não deve impedir a revisão.
       }
     }
-    return matches;
+    // Trechos sobrepostos recebem um único destaque, sem duplicar caracteres.
+    ranges.sort((a, b) => a.start - b.start || b.end - a.end);
+    const visibleRanges = [];
+    let lastEnd = 0;
+    for (const range of ranges) {
+      if (range.start >= lastEnd) {
+        visibleRanges.push(range);
+        lastEnd = range.end;
+      }
+    }
+    return { matches, ranges: visibleRanges };
+  }
+
+  function syncHighlightMirror(textarea) {
+    const cell = textarea.closest(".segment-cell.revised");
+    const mirror = cell && cell.querySelector(".rule-highlight-layer");
+    if (!mirror) return;
+    const computed = getComputedStyle(textarea);
+    mirror.style.top = textarea.offsetTop + "px";
+    mirror.style.left = textarea.offsetLeft + "px";
+    mirror.style.width = textarea.clientWidth + "px";
+    mirror.style.height = textarea.clientHeight + "px";
+    mirror.style.font = computed.font;
+    mirror.style.letterSpacing = computed.letterSpacing;
+    mirror.style.padding = computed.padding;
+    mirror.style.textAlign = computed.textAlign;
+    mirror.style.tabSize = computed.tabSize;
+    mirror.style.lineHeight = computed.lineHeight;
+    mirror.scrollTop = textarea.scrollTop;
+    mirror.scrollLeft = textarea.scrollLeft;
+  }
+
+  function updateHighlightMirror(textarea, ranges) {
+    const cell = textarea.closest(".segment-cell.revised");
+    if (!cell) return;
+    let mirror = cell.querySelector(".rule-highlight-layer");
+    if (!ranges.length) {
+      if (mirror) mirror.remove();
+      return;
+    }
+    if (!mirror) {
+      mirror = document.createElement("div");
+      mirror.className = "rule-highlight-layer";
+      mirror.setAttribute("aria-hidden", "true");
+      textarea.insertAdjacentElement("beforebegin", mirror);
+    }
+    mirror.replaceChildren();
+    const value = textarea.value;
+    let cursor = 0;
+    for (const range of ranges) {
+      if (range.start > cursor) mirror.append(document.createTextNode(value.slice(cursor, range.start)));
+      const mark = document.createElement("mark");
+      mark.textContent = value.slice(range.start, range.end);
+      mirror.append(mark);
+      cursor = range.end;
+    }
+    mirror.append(document.createTextNode(value.slice(cursor) + "\u200b"));
+    syncHighlightMirror(textarea);
   }
 
   function refreshRow(row) {
@@ -98,19 +160,19 @@
       feedback.setAttribute("aria-live", "polite");
       revised.insertAdjacentElement("afterend", feedback);
     }
-    const matched = matchesFor(revised.value);
+    const { matches, ranges } = analyzeText(revised.value);
+    updateHighlightMirror(revised, ranges);
     feedback.replaceChildren();
-    feedback.hidden = !matched.length;
-    if (!matched.length) return;
-
+    feedback.hidden = !matches.length;
+    if (!matches.length) return;
     const title = document.createElement("p");
     title.className = "rule-feedback-heading";
-    title.textContent = matched.length === 1 ? "1 regra personalizada encontrada" :
-      matched.length + " regras personalizadas encontradas";
+    title.textContent = matches.length === 1 ? "1 regra personalizada encontrada" :
+      matches.length + " regras personalizadas encontradas";
     feedback.append(title);
     const list = document.createElement("ul");
     list.className = "rule-feedback-list";
-    for (const item of matched.slice(0, 8)) {
+    for (const item of matches.slice(0, 8)) {
       const li = document.createElement("li");
       li.className = "rule-feedback-item";
       const matchLabel = document.createElement("span");
@@ -122,10 +184,10 @@
       li.append(matchLabel, context);
       list.append(li);
     }
-    if (matched.length > 8) {
+    if (matches.length > 8) {
       const more = document.createElement("li");
       more.className = "rule-feedback-more";
-      more.textContent = "Mais " + (matched.length - 8) + " regras encontradas";
+      more.textContent = "Mais " + (matches.length - 8) + " regras encontradas";
       list.append(more);
     }
     feedback.append(list);
@@ -279,6 +341,26 @@
       if (row) refreshRow(row);
     }
   });
+  // A camada visual acompanha a rolagem interna e o redimensionamento dos campos.
+  segmentContainer.addEventListener("scroll", (event) => {
+    if (event.target.matches && event.target.matches(".segment-cell.revised textarea")) {
+      const textarea = event.target;
+      const mirror = textarea.parentElement.querySelector(".rule-highlight-layer");
+      if (mirror) {
+        mirror.scrollTop = textarea.scrollTop;
+        mirror.scrollLeft = textarea.scrollLeft;
+      }
+    }
+  }, true);
+  window.addEventListener("resize", () => {
+    segmentContainer.querySelectorAll(".segment-cell.revised textarea").forEach(syncHighlightMirror);
+  });
+  segmentContainer.addEventListener("pointerup", (event) => {
+    if (event.target.matches && event.target.matches(".segment-cell.revised textarea")) {
+      requestAnimationFrame(() => syncHighlightMirror(event.target));
+    }
+  });
+
   new MutationObserver((mutations) => {
     if (mutations.some((mutation) => Array.from(mutation.addedNodes).some((node) =>
       node.nodeType === 1 && node.classList.contains("segment-row")))) refreshAll();

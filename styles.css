@@ -123,3 +123,15 @@
 .rule-highlight-layer mark.rule-mark-custom{background:rgba(242,196,65,.44);text-decoration-color:#a67c25}
 .rule-highlight-layer mark.rule-mark-grammar{background:rgba(216,109,104,.33);text-decoration-color:#bf524b}
 @media(max-width:760px){.checker-disclosure{margin:-4px 0 18px}}
+
+/* Decisões por ocorrência: aceitar aplica só a substituição selecionada; ignorar mantém a redação. */
+.rule-suggestion-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:7px}
+.rule-suggestion-actions button,.rule-restore-ignored{border:1px solid #d3dcd1;border-radius:5px;padding:6px 10px;font:600 11px "DM Sans",sans-serif;cursor:pointer}
+.rule-suggestion-accept{background:#345e46;color:#fff;border-color:#345e46!important}
+.rule-suggestion-accept:hover{background:#294b37}
+.rule-suggestion-ignore{background:#fffefa;color:#59665a}
+.rule-suggestion-ignore:hover{background:#eef1eb}
+.rule-suggestion-select{max-width:100%;min-width:110px;border:1px solid #cfd8ca;border-radius:5px;background:#fffefa;padding:5px 9px;color:#35483b;font:11px "DM Sans",sans-serif}
+.rule-restore-ignored{margin-top:9px;background:transparent;color:#576c59;text-align:left}
+.rule-restore-ignored:hover{background:#f0f4ec}
+.rule-suggestion-actions :focus-visible,.rule-restore-ignored:focus-visible{outline:2px solid #669576;outline-offset:2px}

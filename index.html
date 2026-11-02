@@ -8,14 +8,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=20261102-row-focus" />
+    <link rel="stylesheet" href="styles.css?v=20261102-rules-v1" />
   </head>
   <body>
     <div class="app-shell">
       <header class="topbar">
         <a class="brand" href="#" id="homeLink" aria-label="Revisor, início"><span class="brand-mark">R<span>.</span></span><span>revisor</span></a>
         <div class="project-label"><span class="status-dot"></span><span id="saveStatus">Salvo neste navegador</span></div>
-        <div class="topbar-actions"><button class="button button-quiet" id="documentsButton" type="button">Meus textos <span id="documentCount">0</span></button><button class="button button-primary" id="newDocumentButton" type="button">＋ Novo texto</button></div>
+        <div class="topbar-actions"><button class="button button-quiet" id="rulesButton" type="button">Minhas regras <span id="ruleCount">0</span></button><button class="button button-quiet" id="documentsButton" type="button">Meus textos <span id="documentCount">0</span></button><button class="button button-primary" id="newDocumentButton" type="button">＋ Novo texto</button></div>
       </header>
 
       <main>
@@ -50,7 +50,28 @@
       <div class="document-list" id="documentList"></div>
       <button class="button button-primary dialog-new" id="dialogNewDocumentButton" type="button">＋ Criar novo texto</button>
     </dialog>
+
+    <dialog class="library-dialog rules-dialog" id="rulesDialog" aria-labelledby="rulesTitle">
+      <div class="dialog-heading"><div><p class="eyebrow">PREFERÊNCIAS DE REVISÃO</p><h2 id="rulesTitle">Minhas regras</h2></div><button class="dialog-close" id="closeRulesButton" type="button" aria-label="Fechar regras">×</button></div>
+      <p class="dialog-note">Regras válidas para todos os textos, salvas neste navegador. Elas apenas sinalizam possíveis correções: nunca alteram o texto automaticamente.</p>
+      <form id="ruleForm" class="rule-form">
+        <div class="rule-form-grid">
+          <div class="rule-field"><label for="ruleKind">Tipo de regra</label><select id="ruleKind"><option value="literal">Palavra ou expressão</option><option value="regex">Expressão regular (Regex)</option></select></div>
+          <div class="rule-field"><label for="rulePattern">Encontrar</label><input id="rulePattern" maxlength="240" required placeholder="Ex.: pra" autocomplete="off" /></div>
+          <div class="rule-field"><label for="ruleSuggestion">Sugerir (opcional)</label><input id="ruleSuggestion" maxlength="240" placeholder="Ex.: para" autocomplete="off" /></div>
+          <div class="rule-field"><label for="ruleNote">Motivo ou orientação (opcional)</label><input id="ruleNote" maxlength="300" placeholder="Ex.: usar registro formal" autocomplete="off" /></div>
+        </div>
+        <div class="rule-checkboxes">
+          <label id="wholeWordField"><input id="ruleWholeWord" type="checkbox" checked /> Somente palavras/expressões inteiras</label>
+          <label><input id="ruleCaseSensitive" type="checkbox" /> Diferenciar maiúsculas e minúsculas</label>
+        </div>
+        <div class="rule-form-actions"><button id="cancelRuleEditButton" class="button button-quiet hidden" type="button">Cancelar edição</button><button id="saveRuleButton" class="button button-primary" type="submit">Adicionar regra</button></div>
+      </form>
+      <div class="rules-list-heading"><h3>Regras cadastradas</h3><span id="ruleListSummary">Nenhuma regra cadastrada</span></div>
+      <div class="rule-list" id="ruleList"></div>
+    </dialog>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="app.js?v=20261102-native-spellcheck"></script>
+    <script src="rules.js?v=20261102-rules-v1"></script>
   </body>
 </html>

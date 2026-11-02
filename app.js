@@ -536,10 +536,10 @@
     if (row) setActiveSegment(row.dataset.id);
   });
   document.addEventListener("pointerdown", (event) => {
-    if (!segmentsEl.contains(event.target)) setActiveSegment(null);
+    if (!segmentsEl.contains(event.target) && !event.target.closest("#grammarCheckButton")) setActiveSegment(null);
   });
   document.addEventListener("focusin", (event) => {
-    if (!segmentsEl.contains(event.target)) setActiveSegment(null);
+    if (!segmentsEl.contains(event.target) && !event.target.closest("#grammarCheckButton")) setActiveSegment(null);
   });
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && activeSegmentId && !$("#documentsDialog").open) {

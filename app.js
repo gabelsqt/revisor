@@ -298,6 +298,9 @@
         const textarea = document.createElement("textarea");
         textarea.value = value;
         textarea.placeholder = placeholder;
+        // O navegador fornece as sugestões; regras próprias serão tratadas separadamente.
+        textarea.lang = "pt-BR";
+        textarea.spellcheck = key !== "original";
         if (key === "original") {
           textarea.readOnly = true;
           originalTextarea = textarea;

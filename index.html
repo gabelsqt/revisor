@@ -25,7 +25,7 @@
           <p class="intro-copy">Cole a copy e revise trecho por trecho. O original, os comentários e a versão final ficam alinhados na mesma tela.</p>
           <div class="paste-card">
             <label for="sourceInput">Texto para revisar</label>
-            <textarea id="sourceInput" placeholder="Cole aqui o texto da sua copy…" spellcheck="true"></textarea>
+            <textarea id="sourceInput" placeholder="Cole aqui o texto da sua copy…" spellcheck="false"></textarea>
             <div class="paste-footer"><label class="split-control" for="splitMode">Dividir em <select id="splitMode"><option value="paragraphs">Parágrafos</option><option value="sentences">Frases</option></select></label><button class="button button-primary" id="startButton" type="button">Começar revisão <span aria-hidden="true">↗</span></button></div>
           </div>
           <p class="privacy-note"><span aria-hidden="true">▣</span> Seu rascunho fica salvo apenas neste navegador.</p>
@@ -72,7 +72,7 @@
       <div class="rule-list" id="ruleList"></div>
     </dialog>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="app.js?v=20261102-native-spellcheck"></script>
+    <script src="app.js?v=20261102-embedded-checker"></script>
     <script src="rules.js?v=20261102-embedded-checker"></script>
     <script src="checker.js?v=20261102-embedded-checker"></script>
   </body>

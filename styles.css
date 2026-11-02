@@ -84,3 +84,31 @@
 .rule-feedback-more{font-size:10px;color:#7b857a}
 @media(max-width:760px){.rule-form-grid{grid-template-columns:1fr}.rule-entry{align-items:flex-start;flex-direction:column}.rule-entry-actions{width:100%}.rule-checkboxes{flex-direction:column;gap:7px}.rules-dialog{padding:18px}}
 @media(max-width:560px){.project-label{display:none}.topbar .brand>span:last-child{display:none}.topbar-actions #documentCount,.topbar-actions #ruleCount{display:none}.topbar-actions .button{font-size:10px;padding:8px 7px}}
+
+/* Realce das ocorrências encontradas pelas regras pessoais, sem alterar o textarea. */
+.segment-cell.revised{position:relative}
+.segment-cell.revised textarea{position:relative;z-index:1;background:transparent}
+.rule-highlight-layer{
+  position:absolute;
+  z-index:0;
+  box-sizing:border-box;
+  pointer-events:none;
+  overflow:hidden;
+  white-space:pre-wrap;
+  overflow-wrap:break-word;
+  word-break:normal;
+  color:transparent;
+  background:transparent;
+}
+.rule-highlight-layer mark{
+  color:transparent;
+  background:rgba(247,191,63,.43);
+  text-decoration-line:underline;
+  text-decoration-style:wavy;
+  text-decoration-color:#b76d27;
+  text-underline-offset:3px;
+  border-radius:2px;
+}
+@media(forced-colors:active){
+  .rule-highlight-layer mark{background:Highlight;text-decoration-color:Highlight}
+}

@@ -269,6 +269,20 @@
     announce("Texto apagado.");
   }
 
+  // API mínima para salvar decisões de revisão junto ao documento ativo.
+  window.revisorCorrectionStore = {
+    getIgnored(segmentId) {
+      const segment = segments.find((item) => item.id === segmentId);
+      return Array.isArray(segment?.ignoredCorrections) ? segment.ignoredCorrections : [];
+    },
+    setIgnored(segmentId, ignored) {
+      const segment = segments.find((item) => item.id === segmentId);
+      if (!segment) return;
+      segment.ignoredCorrections = ignored;
+      persist();
+    },
+  };
+
   function setActiveSegment(id) {
     activeSegmentId = id;
     segmentsEl.classList.toggle("has-active-segment", Boolean(id));

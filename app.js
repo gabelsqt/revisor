@@ -300,7 +300,7 @@
         textarea.placeholder = placeholder;
         // O navegador fornece as sugestões; regras próprias serão tratadas separadamente.
         textarea.lang = "pt-BR";
-        textarea.spellcheck = key !== "original";
+        textarea.spellcheck = false; // A revisão é feita pelo próprio Revisor, não pelo navegador.
         if (key === "original") {
           textarea.readOnly = true;
           originalTextarea = textarea;

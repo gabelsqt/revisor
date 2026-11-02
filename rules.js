@@ -31,9 +31,8 @@
     ["ainda\\s+existe\\s+alguns\\b", "ainda existem alguns", "Concordância verbal"],
     ["respostas\\s+adequada\\b", "respostas adequadas", "Concordância nominal"],
     ["funcionários\\s+não\\s+estão\\s+preparado\\b", "funcionários não estão preparados", "Concordância nominal"],
-    ["ser\\s+resolvido\\b", "ser resolvidos (conforme o sujeito)", "Verifique a concordância"],
+    ["desafios\\s+que\\s+precisam\\s+ser\\s+resolvido\\b", "desafios que precisam ser resolvidos", "Concordância nominal"],
     ["pessoas\\s+que\\s+busca\\b", "pessoas que buscam", "Concordância verbal"],
-    ["clientes\\s+tenha\\b", "clientes tenham", "Concordância verbal"],
     ["clientes\\s+tenha\\b", "clientes tenham", "Concordância verbal"],
     ["problemas\\s+pela\\s+internet,\\s+mais\\s+nem", "problemas pela internet, mas nem", "Mas/mais"]
   ].map(([pattern, suggestion, note]) => ({

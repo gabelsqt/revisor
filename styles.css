@@ -112,3 +112,14 @@
 @media(forced-colors:active){
   .rule-highlight-layer mark{background:Highlight;text-decoration-color:Highlight}
 }
+
+/* Verificação ortográfica própria do Revisor. */
+.button-secondary{background:#eaf0e9;border:1px solid #b8ccb9;color:#2b5741}
+.button-secondary:hover{background:#dfe9dc}
+.button-secondary:disabled{opacity:.57;cursor:progress}
+.checker-disclosure{margin:-16px 0 18px;color:#878b80;font-size:11px;line-height:1.5}
+.checker-disclosure a{color:#3b6b4f;text-decoration:underline;text-underline-offset:2px}
+.rule-highlight-layer mark.rule-mark-basic{background:rgba(244,152,65,.33);text-decoration-color:#bf6628}
+.rule-highlight-layer mark.rule-mark-custom{background:rgba(242,196,65,.44);text-decoration-color:#a67c25}
+.rule-highlight-layer mark.rule-mark-grammar{background:rgba(216,109,104,.33);text-decoration-color:#bf524b}
+@media(max-width:760px){.checker-disclosure{margin:-4px 0 18px}}

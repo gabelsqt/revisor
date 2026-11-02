@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=20261102-embedded-checker" />
+    <link rel="stylesheet" href="styles.css?v=20261102-accept-ignore" />
   </head>
   <body>
     <div class="app-shell">
@@ -36,7 +36,7 @@
             <div><p class="eyebrow">MESA DE REVISÃO</p><h1>Vamos lapidar.</h1><p class="workspace-subtitle"><span id="segmentCount">0 segmentos</span><span class="sep">·</span> edite cada coluna diretamente. Clique em um trecho para focar; Esc para mostrar todos.</p></div>
             <div class="workspace-actions"><button class="button button-secondary" id="grammarCheckButton" type="button" title="Verifica apenas o trecho selecionado; requer confirmação para enviar ao LanguageTool">✓ Verificar texto</button><button class="button button-quiet" id="backButton" type="button">← Trocar texto</button><details class="download-menu" id="downloadMenu"><summary class="button button-quiet">Baixar relatório <span aria-hidden="true">↓</span></summary><div class="download-options"><button type="button" id="exportHtmlButton">HTML (.html)</button><button type="button" id="exportWordButton">Word (.docx)</button></div></details><button class="button button-primary" id="copyButton" type="button">Copiar versão final <span aria-hidden="true">↗</span></button></div>
           </div>
-          <p class="checker-disclosure">Avisos locais aparecem automaticamente no texto revisado. Para uma análise adicional de ortografia e gramática, selecione um trecho e clique em “Verificar texto” (serviço externo <a href="https://languagetool.org/" target="_blank" rel="noopener noreferrer">LanguageTool</a>; confirmação antes do envio). Nenhuma substituição é automática.</p>
+          <p class="checker-disclosure">Avisos locais aparecem automaticamente no texto revisado. Para uma análise adicional de ortografia e gramática, selecione um trecho e clique em “Verificar texto” (serviço externo <a href="https://languagetool.org/" target="_blank" rel="noopener noreferrer">LanguageTool</a>; confirmação antes do envio). Só altera o texto se você clicar em Aceitar.</p>
           <div class="column-headings" aria-hidden="true"><div><span class="col-index">01</span>Original</div><div><span class="col-index">02</span>Comentários</div><div><span class="col-index">03</span>Texto revisado</div></div>
           <div class="segments" id="segments"></div>
           <button class="add-segment" id="addButton" type="button"><span>＋</span> Adicionar segmento</button>
@@ -72,8 +72,8 @@
       <div class="rule-list" id="ruleList"></div>
     </dialog>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="app.js?v=20261102-embedded-checker"></script>
-    <script src="rules.js?v=20261102-embedded-checker"></script>
+    <script src="app.js?v=20261102-accept-ignore"></script>
+    <script src="rules.js?v=20261102-accept-ignore"></script>
     <script src="checker.js?v=20261102-embedded-checker"></script>
   </body>
 </html>

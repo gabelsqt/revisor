@@ -6,6 +6,7 @@
   const sourceInput = $("#sourceInput");
   const segmentsEl = $("#segments");
   let segments = [];
+  let activeSegmentId = null;
   let documents = [];
   let currentDocumentId = null;
   let saveTimer;
@@ -79,6 +80,7 @@
       revisedParts[index] || ""
     ));
     segments.splice(position, 1, ...pieces);
+    activeSegmentId = pieces[0].id;
     render();
     persist();
     announce(`Trecho dividido em ${pieces.length} frases.`);
@@ -126,6 +128,7 @@
       makeSegment(originalRight, "", revisedRight),
     ];
     segments.splice(position, 1, ...pieces);
+    activeSegmentId = pieces[0].id;
     render();
     persist();
     announce("Trecho dividido no ponto selecionado.");
@@ -141,6 +144,7 @@
     previous.comments = joinSegmentText(previous.comments, current.comments);
     previous.revised = joinSegmentText(previous.revised || firstOriginal, current.revised || secondOriginal);
     segments.splice(index, 1);
+    activeSegmentId = previous.id;
     render();
     persist();
     announce("Trechos unidos.");
@@ -265,6 +269,14 @@
     announce("Texto apagado.");
   }
 
+  function setActiveSegment(id) {
+    activeSegmentId = id;
+    segmentsEl.classList.toggle("has-active-segment", Boolean(id));
+    segmentsEl.querySelectorAll(".segment-row").forEach((row) => {
+      row.classList.toggle("is-selected", row.dataset.id === id);
+    });
+  }
+
   function render() {
     segmentsEl.replaceChildren();
     segments.forEach((segment, index) => {
@@ -308,6 +320,9 @@
       remove.setAttribute("aria-label", `Remover segmento ${index + 1}`);
       remove.addEventListener("click", () => {
         segments = segments.filter((item) => item.id !== segment.id);
+        if (activeSegmentId === segment.id) {
+          activeSegmentId = segments[Math.min(index, segments.length - 1)]?.id || null;
+        }
         render();
         persist();
       });
@@ -339,9 +354,11 @@
       segmentsEl.append(row);
     });
     updateCount();
+    setActiveSegment(segments.some((segment) => segment.id === activeSegmentId) ? activeSegmentId : null);
   }
 
   function showWorkspace() {
+    activeSegmentId = null;
     intro.classList.add("hidden");
     workspace.classList.remove("hidden");
     render();
@@ -505,6 +522,27 @@
     $("#downloadMenu").open = false;
     announce(isWord ? "Relatório Word (.docx) baixado." : "Relatório HTML baixado.");
   }
+
+  // Um clique ou foco em qualquer uma das três colunas destaca a linha inteira.
+  segmentsEl.addEventListener("pointerdown", (event) => {
+    const row = event.target.closest(".segment-row");
+    if (row) setActiveSegment(row.dataset.id);
+  });
+  segmentsEl.addEventListener("focusin", (event) => {
+    const row = event.target.closest(".segment-row");
+    if (row) setActiveSegment(row.dataset.id);
+  });
+  document.addEventListener("pointerdown", (event) => {
+    if (!segmentsEl.contains(event.target)) setActiveSegment(null);
+  });
+  document.addEventListener("focusin", (event) => {
+    if (!segmentsEl.contains(event.target)) setActiveSegment(null);
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && activeSegmentId && !$("#documentsDialog").open) {
+      setActiveSegment(null);
+    }
+  });
 
   $("#startButton").addEventListener("click", startReview);
   $("#homeLink").addEventListener("click", (event) => {

@@ -7,6 +7,40 @@
   let rules = [];
   let editingId = null;
 
+  // Correções locais básicas, sempre disponíveis e sem envio do texto.
+  const BASIC_RULES = [
+    ["ultimos", "últimos", "Acentuação"],
+    ["ultimo", "último", "Acentuação"],
+    ["faceis", "fáceis", "Acentuação"],
+    ["importancia", "importância", "Acentuação"],
+    ["duvida", "dúvida", "Acentuação"],
+    ["rapido", "rápido", "Acentuação"],
+    ["eficiencia", "eficiência", "Acentuação"],
+    ["experiencia", "experiência", "Acentuação"],
+    ["possivel", "possível", "Acentuação"],
+    ["funcionarios", "funcionários", "Acentuação"],
+    ["comunicaçao", "comunicação", "Ortografia"],
+    ["presisamos", "precisamos", "Ortografia"],
+    ["entreguee", "entregue", "Ortografia"],
+    ["a disposição", "à disposição", "Crase"]
+  ].map(([pattern, suggestion, note]) => ({
+    kind: "literal", pattern, suggestion, note, enabled: true, wholeWord: true, caseSensitive: false
+  })).concat([
+    ["muitas\\s+pessoas\\s+prefere\\b", "muitas pessoas preferem", "Concordância verbal"],
+    ["consumidores\\s+reclama\\b", "consumidores reclamam", "Concordância verbal"],
+    ["ainda\\s+existe\\s+alguns\\b", "ainda existem alguns", "Concordância verbal"],
+    ["respostas\\s+adequada\\b", "respostas adequadas", "Concordância nominal"],
+    ["funcionários\\s+não\\s+estão\\s+preparado\\b", "funcionários não estão preparados", "Concordância nominal"],
+    ["ser\\s+resolvido\\b", "ser resolvidos (conforme o sujeito)", "Verifique a concordância"],
+    ["pessoas\\s+que\\s+busca\\b", "pessoas que buscam", "Concordância verbal"],
+    ["clientes\\s+tenha\\b", "clientes tenham", "Concordância verbal"],
+    ["clientes\\s+tenha\\b", "clientes tenham", "Concordância verbal"],
+    ["problemas\\s+pela\\s+internet,\\s+mais\\s+nem", "problemas pela internet, mas nem", "Mas/mais"]
+  ].map(([pattern, suggestion, note]) => ({
+    kind: "regex", pattern, suggestion, note, enabled: true, wholeWord: false, caseSensitive: false
+  })));
+  const checkedSegments = new Map();
+
   const ruleId = () => "r-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 9);
   const escapeLiteral = (value) => Array.from(value, (char) =>
     ".*+?^$()[]{}|\\".includes(char) ? "\\" + char : char
@@ -61,46 +95,54 @@
   }
 
 
-  function analyzeText(text) {
+
+  function analyzeText(text, rowId) {
     const matches = [];
     const ranges = [];
     const source = String(text || "").slice(0, 10000);
     if (!source) return { matches, ranges };
-    for (const rule of rules) {
-      if (!rule.enabled) continue;
-      try {
-        const regex = matcher(rule);
-        let count = 0;
-        let example = "";
-        let found;
-        while (count < 100 && (found = regex.exec(source)) !== null) {
-          if (!found[0]) {
-            // Avance mesmo em expressões que podem encontrar cadeias vazias.
-            regex.lastIndex += 1;
-            continue;
+    for (const [origin, group] of [["personalizada", rules], ["local", BASIC_RULES]]) {
+      for (const rule of group) {
+        if (!rule.enabled) continue;
+        try {
+          const regex = matcher(rule);
+          let count = 0;
+          let example = "";
+          let found;
+          while (count < 60 && (found = regex.exec(source)) !== null) {
+            if (!found[0]) { regex.lastIndex += 1; continue; }
+            count++;
+            if (!example) example = found[0].slice(0, 90);
+            if (ranges.length < 300) ranges.push({ start: found.index, end: found.index + found[0].length, origin });
           }
-          count += 1;
-          if (!example) example = found[0].slice(0, 90);
-          if (ranges.length < 400) {
-            ranges.push({ start: found.index, end: found.index + found[0].length });
-          }
+          if (count) matches.push({ rule, count, example, origin });
+        } catch {
+          // Regras inválidas são ignoradas para não interromper o editor.
         }
-        if (count) matches.push({ rule, count, example });
-      } catch {
-        // Uma regra inválida não deve impedir a revisão.
       }
     }
-    // Trechos sobrepostos recebem um único destaque, sem duplicar caracteres.
-    ranges.sort((a, b) => a.start - b.start || b.end - a.end);
-    const visibleRanges = [];
-    let lastEnd = 0;
+    const service = checkedSegments.get(rowId);
+    if (service?.text === text) {
+      for (const entry of service.matches) {
+        const position = Number(entry.offset);
+        const length = Number(entry.length);
+        if (!Number.isInteger(position) || !Number.isInteger(length) || length < 1 ||
+            position < 0 || position + length > source.length) continue;
+        const suggestion = Array.isArray(entry.replacements) ?
+          entry.replacements.slice(0, 3).map((replacement) => String(replacement.value || "")).filter(Boolean).join(" / ") : "";
+        const rule = { suggestion, note: String(entry.message || "Rever esta passagem"), pattern: source.slice(position, position + length) };
+        matches.push({ rule, count: 1, example: rule.pattern, origin: "gramática" });
+        ranges.push({ start: position, end: position + length, origin: "gramática" });
+      }
+    }
+    const priority = { gramática: 0, personalizada: 1, local: 2 };
+    ranges.sort((a, b) => priority[a.origin] - priority[b.origin] || a.start - b.start || b.end - a.end);
+    const selected = [];
     for (const range of ranges) {
-      if (range.start >= lastEnd) {
-        visibleRanges.push(range);
-        lastEnd = range.end;
-      }
+      if (!selected.some((existing) => range.start < existing.end && existing.start < range.end)) selected.push(range);
     }
-    return { matches, ranges: visibleRanges };
+    selected.sort((a, b) => a.start - b.start);
+    return { matches, ranges: selected };
   }
 
   function syncHighlightMirror(textarea) {
@@ -142,6 +184,7 @@
     for (const range of ranges) {
       if (range.start > cursor) mirror.append(document.createTextNode(value.slice(cursor, range.start)));
       const mark = document.createElement("mark");
+      mark.className = "rule-mark-" + (range.origin === "gramática" ? "grammar" : range.origin === "personalizada" ? "custom" : "basic");
       mark.textContent = value.slice(range.start, range.end);
       mirror.append(mark);
       cursor = range.end;
@@ -160,15 +203,15 @@
       feedback.setAttribute("aria-live", "polite");
       revised.insertAdjacentElement("afterend", feedback);
     }
-    const { matches, ranges } = analyzeText(revised.value);
+    const { matches, ranges } = analyzeText(revised.value, row.dataset.id);
     updateHighlightMirror(revised, ranges);
     feedback.replaceChildren();
     feedback.hidden = !matches.length;
     if (!matches.length) return;
     const title = document.createElement("p");
     title.className = "rule-feedback-heading";
-    title.textContent = matches.length === 1 ? "1 regra personalizada encontrada" :
-      matches.length + " regras personalizadas encontradas";
+    title.textContent = matches.length === 1 ? "1 sugestão encontrada" :
+      matches.length + " sugestões encontradas";
     feedback.append(title);
     const list = document.createElement("ul");
     list.className = "rule-feedback-list";
@@ -179,7 +222,7 @@
       matchLabel.textContent = "“" + item.example + "”" +
         (item.rule.suggestion ? " → “" + item.rule.suggestion + "”" : " · conferir");
       const context = document.createElement("small");
-      context.textContent = (item.rule.note ? item.rule.note + " · " : "") +
+      context.textContent = (item.origin === "gramática" ? "LanguageTool" : item.origin === "local" ? "Verificador local" : "Regra pessoal") + " · " + (item.rule.note ? item.rule.note + " · " : "") +
         item.count + (item.count === 1 ? " ocorrência" : " ocorrências");
       li.append(matchLabel, context);
       list.append(li);
@@ -196,6 +239,12 @@
   function refreshAll() {
     segmentContainer.querySelectorAll(".segment-row").forEach(refreshRow);
   }
+
+  window.revisorReceiveCheck = (id, text, entries) => {
+    checkedSegments.set(id, { text, matches: Array.isArray(entries) ? entries : [] });
+    refreshAll();
+  };
+
 
   function renderRuleList() {
     const list = $("#ruleList");
